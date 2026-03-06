@@ -278,7 +278,7 @@ async function loadProjects() {
       return;
     }
     grid.innerHTML = data.map(p => `
-      <div class="proj-card" onclick="openProject('${p.id}', ${JSON.stringify(esc(p.name))})">
+      <div class="proj-card" data-pid="${p.id}" data-pname="${esc(p.name)}" onclick="openProject(this.dataset.pid, this.dataset.pname)">
         <div class="proj-card-name">${esc(p.name)}</div>
         <div class="proj-card-meta">Updated ${timeAgo(p.updated_at)}</div>
       </div>`).join('');
