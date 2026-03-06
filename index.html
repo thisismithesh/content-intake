@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" spellcheck="true">
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
@@ -278,7 +278,7 @@ async function loadProjects() {
       return;
     }
     grid.innerHTML = data.map(p => `
-      <div class="proj-card" data-pid="${p.id}" data-pname="${esc(p.name)}" onclick="openProject(this.dataset.pid, this.dataset.pname)">
+      <div class="proj-card" onclick="openProject('${p.id}', ${JSON.stringify(esc(p.name))})">
         <div class="proj-card-name">${esc(p.name)}</div>
         <div class="proj-card-meta">Updated ${timeAgo(p.updated_at)}</div>
       </div>`).join('');
@@ -561,6 +561,9 @@ function renderMain() {
     } else if (el.dataset.listidx !== undefined) {
       el.innerHTML = pg().data[secId]?.list?.[parseInt(el.dataset.listidx)] || '';
     }
+    // Nudge browser to re-evaluate spellcheck after innerHTML is set programmatically
+    el.spellcheck = false;
+    el.spellcheck = true;
   });
 }
 
@@ -578,6 +581,63 @@ function removeItem(secId, i) {
     pg().data[secId].list.push(s.resList ? {title:'',url:''} : '');
   }
   renderMain();
+}
+
+// ── PASTE HANDLER — strip all formatting except bold, italic, lists ──────────
+document.addEventListener('paste', function(e) {
+  const editor = e.target.closest('.rich-editor');
+  if (!editor) return;
+  e.preventDefault();
+  const html = (e.clipboardData || window.clipboardData).getData('text/html');
+  let cleaned;
+  if (html) {
+    cleaned = cleanPasteHTML(html);
+  } else {
+    const text = (e.clipboardData || window.clipboardData).getData('text/plain');
+    cleaned = text
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+      .replace(/\n/g,'<br>');
+  }
+  document.execCommand('insertHTML', false, cleaned);
+}, true);
+
+function cleanPasteHTML(html) {
+  const tmp = document.createElement('div');
+  tmp.innerHTML = html;
+  return walkClean(tmp);
+}
+
+function walkClean(node) {
+  let out = '';
+  node.childNodes.forEach(child => {
+    if (child.nodeType === Node.TEXT_NODE) {
+      out += child.textContent
+        .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+      return;
+    }
+    const tag = (child.tagName || '').toLowerCase();
+    const inner = walkClean(child);
+    if (tag === 'br') {
+      out += '<br>';
+    } else if (tag === 'b' || tag === 'strong') {
+      out += '<b>' + inner + '</b>';
+    } else if (tag === 'i' || tag === 'em') {
+      out += '<i>' + inner + '</i>';
+    } else if (tag === 'ul' || tag === 'ol') {
+      let items = '';
+      child.querySelectorAll(':scope > li').forEach(li => {
+        items += '<li>' + walkClean(li) + '</li>';
+      });
+      out += items ? '<ul>' + items + '</ul>' : '';
+    } else if (tag === 'li') {
+      out += inner;
+    } else if (['p','div','h1','h2','h3','h4','h5','h6','blockquote','section','article','header','footer','td','th'].includes(tag)) {
+      out += inner ? '<div>' + inner + '</div>' : '';
+    } else {
+      out += inner;
+    }
+  });
+  return out;
 }
 
 // ── FORMATTING ────────────────────────────────────────────────────────────────
