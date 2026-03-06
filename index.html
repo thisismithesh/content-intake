@@ -785,7 +785,7 @@ function htmlToRuns(html) {
 }
 
 // Convert a rich-HTML list item into multiple docx Paragraphs.
-// Inline content (bold heading etc.) → one numbered paragraph.
+// Inline content (bold/italic text) → one numbered paragraph.
 // Any nested <ul>/<ol> → indented bullet paragraphs after it.
 function htmlToListItemParas(html, numRef, subBulletRef) {
   const {Paragraph, TextRun} = docx;
@@ -795,7 +795,6 @@ function htmlToListItemParas(html, numRef, subBulletRef) {
   const parser = new DOMParser();
   const dom = parser.parseFromString(html, 'text/html');
 
-  // Collect segments: {type:'inline',runs:[]} or {type:'bullets',items:[[runs]]}
   const segments = [];
 
   function addInline(runs) {
@@ -810,35 +809,46 @@ function htmlToListItemParas(html, numRef, subBulletRef) {
   function addBullets(listNode) {
     const items = [];
     listNode.querySelectorAll(':scope > li').forEach(li => {
-      const runs = nodeToRuns(li, false, false);
+      const runs = collectRuns(li, false, false);
       if (runs.length) items.push(runs);
     });
     if (items.length) segments.push({type:'bullets', items});
   }
 
-  function processNode(node) {
+  // processNode tracks bold/italic context as it walks the tree
+  function processNode(node, bold, italic) {
+    if (node.nodeType === Node.TEXT_NODE) {
+      const t = node.textContent;
+      if (t) addInline([new TextRun({text:t, bold, italics:italic, font:'Arial', size:22})]);
+      return;
+    }
     const tag = (node.tagName||'').toUpperCase();
     if (tag==='UL'||tag==='OL') {
       addBullets(node);
     } else if (tag==='BR') {
       addInline([new TextRun({break:1})]);
     } else if (tag==='P'||tag==='DIV') {
-      node.childNodes.forEach(processNode);
-    } else if (node.nodeType===Node.TEXT_NODE) {
-      if (node.textContent) addInline(nodeToRuns(node, false, false));
+      node.childNodes.forEach(c => processNode(c, bold, italic));
     } else {
-      // check if any child is a block/list
+      const b = bold   || tag==='B' || tag==='STRONG';
+      const i = italic || tag==='I' || tag==='EM';
+      // check if this element contains any block/list children
       let hasBlock = false;
-      node.childNodes.forEach(c => { if (['UL','OL','P','DIV'].includes((c.tagName||'').toUpperCase())) hasBlock=true; });
-      if (hasBlock) node.childNodes.forEach(processNode);
-      else addInline(nodeToRuns(node, false, false));
+      node.childNodes.forEach(c => {
+        if (['UL','OL','P','DIV'].includes((c.tagName||'').toUpperCase())) hasBlock = true;
+      });
+      if (hasBlock) {
+        node.childNodes.forEach(c => processNode(c, b, i));
+      } else {
+        // pure inline element — collect runs preserving bold/italic
+        addInline(collectRuns(node, bold, italic));
+      }
     }
   }
 
-  dom.body.childNodes.forEach(processNode);
+  dom.body.childNodes.forEach(c => processNode(c, false, false));
   if (!segments.length) return fallback();
 
-  // Build option objects first, then create Paragraphs at the end so we can adjust last spacing
   const opts = [];
   let isFirst = true;
 
@@ -863,11 +873,24 @@ function htmlToListItemParas(html, numRef, subBulletRef) {
   });
 
   if (!opts.length) return fallback();
-
-  // Give last option more bottom spacing
   opts[opts.length-1].spacing = Object.assign({}, opts[opts.length-1].spacing, {after:80});
-
   return opts.map(o => new Paragraph(o));
+}
+
+// Collect text runs from a node, correctly tracking bold/italic context
+function collectRuns(node, bold, italic) {
+  const {TextRun} = docx;
+  const runs = [];
+  if (node.nodeType === Node.TEXT_NODE) {
+    const t = node.textContent;
+    if (t) runs.push(new TextRun({text:t, bold, italics:italic, font:'Arial', size:22}));
+  } else {
+    const tag = (node.tagName||'').toUpperCase();
+    const b = bold   || tag==='B' || tag==='STRONG';
+    const i = italic || tag==='I' || tag==='EM';
+    node.childNodes.forEach(c => runs.push(...collectRuns(c, b, i)));
+  }
+  return runs;
 }
 
 // Convert stored HTML string to an array of docx Paragraphs
@@ -879,31 +902,39 @@ function htmlToParas(html, bulletRef) {
   const paras = [];
 
   function addPara(node, isBullet) {
-    const runs = nodeToRuns(node, false, false);
+    const runs = collectRuns(node, false, false);
     if (!runs.length) return;
     if (isBullet) paras.push(new Paragraph({numbering:{reference:bulletRef,level:0},children:runs,spacing:{before:20,after:40}}));
     else paras.push(new Paragraph({children:runs,spacing:{before:0,after:60}}));
   }
 
-  dom.body.childNodes.forEach(node => {
-    const tag = node.tagName||'';
+  function processParaNode(node) {
+    const tag = (node.tagName||'').toUpperCase();
     if (tag==='UL'||tag==='OL') {
       node.querySelectorAll('li').forEach(li => addPara(li, tag==='UL'));
     } else if (tag==='P'||tag==='DIV') {
-      // could contain a nested UL
+      // recurse — may contain inline text AND nested lists
       let hasBlock = false;
       node.childNodes.forEach(child => {
-        const ct = child.tagName||'';
-        if (ct==='UL'||ct==='OL') { hasBlock=true; child.querySelectorAll('li').forEach(li=>addPara(li,ct==='UL')); }
+        const ct = (child.tagName||'').toUpperCase();
+        if (ct==='UL'||ct==='OL') { hasBlock=true; child.querySelectorAll('li').forEach(li=>addPara(li,true)); }
       });
-      if (!hasBlock) addPara(node, false);
+      // also capture any inline text in this block (not just when no block children)
+      const inlineRuns = [];
+      node.childNodes.forEach(child => {
+        const ct = (child.tagName||'').toUpperCase();
+        if (ct!=='UL' && ct!=='OL') inlineRuns.push(...collectRuns(child, false, false));
+      });
+      if (inlineRuns.length) paras.push(new Paragraph({children:inlineRuns,spacing:{before:0,after:60}}));
     } else if (node.nodeType===Node.TEXT_NODE) {
-      const t = node.textContent.trim();
-      if (t) paras.push(new Paragraph({children:[new TextRun({text:t,font:'Arial',size:22})],spacing:{before:0,after:60}}));
+      const t = node.textContent;
+      if (t && t.trim()) paras.push(new Paragraph({children:[new TextRun({text:t,font:'Arial',size:22})],spacing:{before:0,after:60}}));
     } else {
       addPara(node, false);
     }
-  });
+  }
+
+  dom.body.childNodes.forEach(processParaNode);
   return paras.length ? paras : [new Paragraph({children:[new TextRun({text:'—',font:'Arial',size:22})],spacing:{before:0,after:80}})];
 }
 
