@@ -1,0 +1,1389 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Content Intake</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f5f5f5;
+  --surface:#fff;
+  --border:#e4e4e4;
+  --ink:#1c1c1c;
+  --muted:#888;
+  --accent:#2563eb;
+  --accent-bg:#eff6ff;
+  --radius:8px;
+}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--ink);font-size:14px;min-height:100vh;display:flex;flex-direction:column}
+
+.topbar{background:var(--surface);border-bottom:1px solid var(--border);height:52px;display:flex;align-items:center;justify-content:space-between;padding:0 24px;position:sticky;top:0;z-index:50}
+.topbar-title{font-weight:600;font-size:15px}
+.topbar-right{display:flex;gap:8px}
+
+.layout{display:flex;flex:1}
+
+.sidebar{width:220px;background:var(--surface);border-right:1px solid var(--border);padding:16px 0;position:sticky;top:52px;height:calc(100vh - 52px);overflow-y:auto;flex-shrink:0}
+.sidebar-label{font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--muted);padding:6px 18px 4px}
+.page-item{display:flex;align-items:center;padding:7px 18px;cursor:pointer;font-size:13px;color:var(--muted);gap:8px;transition:background 0.1s,color 0.1s;border-radius:0}
+.page-item:hover{background:var(--bg);color:var(--ink)}
+.page-item.active{background:var(--accent-bg);color:var(--accent);font-weight:500}
+.page-item .dot{width:5px;height:5px;border-radius:50%;background:currentColor;flex-shrink:0}
+.add-page{display:flex;align-items:center;gap:6px;padding:7px 18px;cursor:pointer;font-size:13px;color:var(--muted);transition:color 0.1s}
+.add-page:hover{color:var(--accent)}
+.rename-wrap{padding:6px 12px 12px}
+.rename-input{width:100%;border:1px solid var(--border);border-radius:6px;padding:5px 9px;font-size:12px;font-family:'Inter',sans-serif;outline:none;color:var(--ink)}
+.rename-input:focus{border-color:var(--accent)}
+.divider{border:none;border-top:1px solid var(--border);margin:8px 0}
+.nav-item{display:flex;align-items:center;padding:7px 18px;cursor:pointer;font-size:13px;color:var(--muted);gap:8px;transition:background 0.1s,color 0.1s}
+.nav-item:hover{background:var(--bg);color:var(--ink)}
+.nav-item.active{background:var(--accent-bg);color:var(--accent);font-weight:500}
+.nav-num{font-size:11px;width:16px;text-align:right;flex-shrink:0;opacity:0.6}
+
+.main{flex:1;padding:32px;overflow-y:auto}
+.main-inner{max-width:680px}
+.sec-title{font-size:19px;font-weight:600;margin-bottom:3px}
+.sec-sub{color:var(--muted);font-size:13px;margin-bottom:24px}
+
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px 20px;margin-bottom:14px}
+.field-label{font-size:11px;font-weight:600;letter-spacing:0.8px;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
+
+textarea,input[type=text]{width:100%;border:1px solid var(--border);border-radius:6px;padding:8px 11px;font-family:'Inter',sans-serif;font-size:13.5px;color:var(--ink);outline:none;resize:vertical;line-height:1.55;background:#fafafa;transition:border-color 0.15s,background 0.15s}
+textarea:focus,input[type=text]:focus{border-color:var(--accent);background:#fff}
+textarea{min-height:68px}
+
+/* contenteditable rich text fields — full browser spell+grammar check */
+.rich-editor{width:100%;border:1px solid var(--border);border-radius:6px;padding:8px 11px;font-family:'Inter',sans-serif;font-size:13.5px;color:var(--ink);outline:none;line-height:1.6;background:#fafafa;transition:border-color 0.15s,background 0.15s;min-height:68px;word-break:break-word}
+.rich-editor:focus{border-color:var(--accent);background:#fff}
+.rich-editor:empty::before{content:attr(data-placeholder);color:#aaa;pointer-events:none}
+.rich-editor ul{padding-left:20px;margin:4px 0}
+.rich-editor li{margin:2px 0}
+.rich-editor b,.rich-editor strong{font-weight:700}
+.rich-editor i,.rich-editor em{font-style:italic}
+
+.fmt-toolbar{display:flex;gap:4px;margin-bottom:7px}
+.fmt-btn{background:none;border:1px solid var(--border);border-radius:4px;width:28px;height:26px;font-size:13px;cursor:pointer;color:var(--ink);display:flex;align-items:center;justify-content:center;transition:background 0.1s,border-color 0.1s,color 0.1s}
+.fmt-btn:hover{background:var(--accent-bg);border-color:var(--accent);color:var(--accent)}
+.fmt-btn.active{background:var(--accent);border-color:var(--accent);color:#fff}
+.fmt-btn.active:hover{background:#1d4ed8;border-color:#1d4ed8}
+.fmt-btn-wide{width:auto;padding:0 8px;font-size:12px;gap:3px}
+
+.list-row{display:flex;align-items:flex-start;gap:8px;margin-bottom:8px}
+.list-num{width:20px;padding-top:10px;font-size:11px;color:var(--muted);flex-shrink:0;text-align:right}
+.list-row textarea{min-height:36px;resize:none}
+.rm-btn{width:28px;height:36px;background:none;border:1px solid var(--border);border-radius:6px;cursor:pointer;color:var(--muted);font-size:13px;flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:all 0.1s;padding:0}
+.rm-btn:hover{border-color:#dc2626;color:#dc2626;background:#fef2f2}
+.add-row{display:inline-flex;align-items:center;gap:5px;margin-top:6px;cursor:pointer;color:var(--muted);font-size:12.5px;transition:color 0.1s}
+.add-row:hover{color:var(--accent)}
+
+.res-item{padding-bottom:14px;border-bottom:1px solid var(--border);margin-bottom:14px}
+.res-item:last-child{border-bottom:none;margin-bottom:0;padding-bottom:0}
+.res-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.res-label{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.6px}
+.res-rm{font-size:12px;color:var(--muted);cursor:pointer;transition:color 0.1s}
+.res-rm:hover{color:#dc2626}
+.res-fields{display:flex;flex-direction:column;gap:6px}
+.res-field-label{font-size:11px;color:var(--muted);margin-bottom:3px}
+
+.notes-toggle{display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--muted);cursor:pointer;margin-top:10px;transition:color 0.1s;user-select:none}
+.notes-toggle:hover{color:var(--ink)}
+.notes-body{display:none;margin-top:8px}
+.notes-body.open{display:block}
+.notes-body textarea{background:#fffdf0;border-color:#e0d88a;min-height:56px}
+.notes-body textarea:focus{border-color:#b8a800;background:#fffef5}
+
+.btn{display:inline-flex;align-items:center;gap:5px;padding:6px 13px;border-radius:7px;font-family:'Inter',sans-serif;font-size:13px;font-weight:500;cursor:pointer;border:1px solid transparent;transition:all 0.15s}
+.btn-primary{background:var(--accent);color:#fff}
+.btn-primary:hover{background:#1d4ed8}
+.btn-outline{background:#fff;color:var(--ink);border-color:var(--border)}
+.btn-outline:hover{border-color:#aaa}
+.btn:disabled{opacity:0.35;cursor:default}
+
+.section-footer{display:flex;justify-content:space-between;align-items:center;margin-top:28px;padding-top:20px;border-top:1px solid var(--border)}
+
+/* export dropdown */
+.export-wrap{position:relative;display:inline-flex}
+.export-dropdown{display:none;position:absolute;top:calc(100% + 6px);right:0;background:#fff;border:1px solid var(--border);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,0.12);padding:8px;width:240px;z-index:100}
+.export-dropdown.open{display:block}
+.export-dropdown-title{font-size:11px;font-weight:600;letter-spacing:0.8px;text-transform:uppercase;color:var(--muted);padding:4px 8px 8px}
+.export-opt{display:flex;flex-direction:column;padding:10px 12px;border-radius:7px;cursor:pointer;transition:background 0.1s;gap:2px}
+.export-opt:hover{background:var(--bg)}
+.export-opt-label{font-size:13px;font-weight:500;color:var(--ink)}
+.export-opt-sub{font-size:11.5px;color:var(--muted)}
+.export-opt.primary .export-opt-label{color:var(--accent)}
+.export-divider{border:none;border-top:1px solid var(--border);margin:4px 0}
+
+.toast{position:fixed;bottom:20px;right:20px;background:#1c1c1c;color:#fff;padding:9px 16px;border-radius:8px;font-size:13px;z-index:300;opacity:0;transform:translateY(6px);transition:all 0.2s;pointer-events:none}
+.toast.show{opacity:1;transform:translateY(0)}
+
+/* edit sections modal */
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.35);z-index:200;align-items:center;justify-content:center}
+.overlay.open{display:flex}
+.modal{background:#fff;border-radius:12px;width:500px;max-width:95vw;max-height:85vh;display:flex;flex-direction:column;box-shadow:0 8px 40px rgba(0,0,0,0.15);overflow:hidden}
+.modal-head{display:flex;justify-content:space-between;align-items:center;padding:20px 24px 16px;border-bottom:1px solid var(--border)}
+.modal-head h2{font-size:15px;font-weight:600}
+.modal-head p{font-size:12px;color:var(--muted);margin-top:2px}
+.modal-close{background:none;border:none;font-size:20px;cursor:pointer;color:var(--muted);line-height:1;padding:0}
+.modal-body{flex:1;overflow-y:auto;padding:16px 24px}
+.modal-foot{display:flex;justify-content:space-between;align-items:center;padding:14px 24px;border-top:1px solid var(--border)}
+
+/* section rows in edit modal */
+.sec-row{display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--border);border-radius:8px;margin-bottom:8px;background:#fff;transition:box-shadow 0.1s;cursor:grab}
+.sec-row:active{cursor:grabbing;box-shadow:0 4px 16px rgba(0,0,0,0.1)}
+.sec-row.dragging{opacity:0.4}
+.sec-row.drag-over{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-bg)}
+.drag-handle{color:var(--border);font-size:15px;cursor:grab;padding:0 2px;user-select:none;flex-shrink:0}
+.drag-handle:hover{color:var(--muted)}
+.sec-name-input{flex:1;border:1px solid transparent;border-radius:5px;padding:5px 8px;font-size:13px;font-family:'Inter',sans-serif;color:var(--ink);background:transparent;outline:none}
+.sec-name-input:focus{border-color:var(--border);background:var(--bg)}
+.sec-row-actions{display:flex;gap:4px;flex-shrink:0}
+.icon-btn{background:none;border:1px solid transparent;border-radius:5px;width:26px;height:26px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:13px;color:var(--muted);transition:all 0.1s}
+.icon-btn:hover{border-color:var(--border);color:var(--ink)}
+.icon-btn.del:hover{border-color:#fca5a5;color:#dc2626;background:#fef2f2}
+.add-sec-btn{display:flex;align-items:center;gap:6px;padding:9px 12px;border:1.5px dashed var(--border);border-radius:8px;cursor:pointer;font-size:13px;color:var(--muted);width:100%;transition:border-color 0.1s,color 0.1s;background:none;font-family:'Inter',sans-serif;margin-top:4px}
+.add-sec-btn:hover{border-color:var(--accent);color:var(--accent)}
+
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+
+/* ── PROJECT PICKER ── */
+#projectScreen{position:fixed;inset:0;background:var(--bg);z-index:500;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 24px}
+.proj-brand{font-size:22px;font-weight:700;color:var(--ink);margin-bottom:6px;letter-spacing:-0.5px}
+.proj-brand span{color:var(--accent)}
+.proj-subtitle{font-size:13.5px;color:var(--muted);margin-bottom:36px}
+.proj-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;width:100%;max-width:760px;max-height:55vh;overflow-y:auto;padding:2px}
+.proj-card{background:var(--surface);border:1.5px solid var(--border);border-radius:10px;padding:18px 20px;cursor:pointer;transition:border-color 0.15s,box-shadow 0.15s;display:flex;flex-direction:column;gap:4px}
+.proj-card:hover{border-color:var(--accent);box-shadow:0 2px 12px rgba(37,99,235,0.1)}
+.proj-card-name{font-size:14px;font-weight:600;color:var(--ink)}
+.proj-card-meta{font-size:11.5px;color:var(--muted)}
+.proj-card.new-card{border-style:dashed;border-color:var(--border);background:transparent;align-items:center;justify-content:center;gap:6px;flex-direction:row;color:var(--muted);font-size:13px;font-weight:500;min-height:80px}
+.proj-card.new-card:hover{border-color:var(--accent);color:var(--accent)}
+.proj-loading{color:var(--muted);font-size:13.5px;display:flex;align-items:center;gap:8px}
+.proj-spinner{width:16px;height:16px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin 0.7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.proj-new-form{display:flex;gap:8px;margin-top:20px;width:100%;max-width:760px}
+.proj-new-input{flex:1;border:1.5px solid var(--border);border-radius:8px;padding:9px 14px;font-family:'Inter',sans-serif;font-size:13.5px;outline:none;color:var(--ink)}
+.proj-new-input:focus{border-color:var(--accent)}
+
+/* save indicator */
+.save-indicator{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:5px;transition:opacity 0.3s}
+.save-dot{width:6px;height:6px;border-radius:50%;background:var(--muted);flex-shrink:0;transition:background 0.3s}
+.save-indicator.saving .save-dot{background:var(--warn,#d97706);animation:pulse 1s infinite}
+.save-indicator.saved .save-dot{background:var(--success,#059669)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+</style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="https://unpkg.com/docx@7.8.2/build/index.js"></script>
+</head>
+<body>
+
+<!-- PROJECT PICKER -->
+<div id="projectScreen">
+  <div class="proj-brand">content<span>intake</span></div>
+  <div class="proj-subtitle">Select a project to continue, or create a new one.</div>
+  <div class="proj-grid" id="projGrid">
+    <div class="proj-loading"><div class="proj-spinner"></div>Loading projects…</div>
+  </div>
+  <div class="proj-new-form">
+    <input class="proj-new-input" id="newProjInput" placeholder="New project name…" onkeydown="if(event.key==='Enter')createProject()"/>
+    <button class="btn btn-primary" onclick="createProject()">Create project</button>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="appShell" style="display:none;flex-direction:column;flex:1">
+
+<div class="topbar">
+  <div style="display:flex;align-items:center;gap:12px">
+    <button class="btn btn-outline" style="padding:5px 10px;font-size:12px" onclick="backToProjects()">← Projects</button>
+    <div class="topbar-title" id="topbarProjectName"></div>
+  </div>
+  <div style="display:flex;align-items:center;gap:12px">
+    <div class="save-indicator" id="saveIndicator">
+      <div class="save-dot"></div><span id="saveLabel">Saved</span>
+    </div>
+    <button class="btn btn-outline" onclick="openEditSections()">Edit sections</button>
+    <div class="export-wrap" id="exportWrap">
+      <button class="btn btn-primary" onclick="toggleExportMenu(event)">⬇ Download .docx ▾</button>
+      <div class="export-dropdown" id="exportDropdown">
+        <div class="export-dropdown-title">Export as</div>
+        <div class="export-opt primary" onclick="downloadDocx('current')">
+          <span class="export-opt-label">⬇ This page</span>
+          <span class="export-opt-sub">Export "<span id="curPageName"></span>" only</span>
+        </div>
+        <hr class="export-divider"/>
+        <div class="export-opt" onclick="downloadDocx('all')">
+          <span class="export-opt-label">⬇ All pages</span>
+          <span class="export-opt-sub">Each page as a separate section</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="layout">
+  <div class="sidebar">
+    <div class="sidebar-label">Pages</div>
+    <div id="pageList"></div>
+    <div class="add-page" onclick="addPage()">+ Add page</div>
+    <div class="rename-wrap"><input class="rename-input" id="renameInput" placeholder="Page name…" oninput="renamePage(this.value)"/></div>
+    <hr class="divider"/>
+    <div class="sidebar-label">Sections</div>
+    <div id="secNav"></div>
+  </div>
+  <div class="main"><div class="main-inner" id="main"></div></div>
+</div>
+
+</div><!-- end appShell -->
+
+<!-- Edit Sections Modal -->
+<div class="overlay" id="editSecOverlay">
+  <div class="modal">
+    <div class="modal-head">
+      <div>
+        <h2>Edit sections</h2>
+        <p>Drag to reorder · click name to rename · changes apply immediately</p>
+      </div>
+      <button class="modal-close" onclick="closeEditSections()">✕</button>
+    </div>
+    <div class="modal-body" id="editSecList"></div>
+    <div class="modal-foot">
+      <button class="add-sec-btn" onclick="addSection()">+ Add section</button>
+      <button class="btn btn-primary" onclick="closeEditSections()">Done</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── CONFIG — replace these two values after setting up Supabase ──────────────
+const SUPABASE_URL      = 'https://rukrncycaqtnuqrtehez.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ1a3JuY3ljYXF0bnVxcnRlaGV6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI3ODQzMTcsImV4cCI6MjA4ODM2MDMxN30.zSTm1kP5FFWDyPUdRCSmrvU98aiDUnuJayDj2no4pQg';
+// ─────────────────────────────────────────────────────────────────────────────
+
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+let currentProjectId = null;
+
+// ── PROJECT PICKER ────────────────────────────────────────────────────────────
+async function loadProjects() {
+  const grid = document.getElementById('projGrid');
+  grid.innerHTML = '<div class="proj-loading"><div class="proj-spinner"></div>Loading…</div>';
+  try {
+    const { data, error } = await sb.from('projects').select('id,name,updated_at').order('updated_at', { ascending: false });
+    if (error) throw error;
+    if (!data.length) {
+      grid.innerHTML = '<div class="proj-loading" style="grid-column:1/-1;color:var(--muted)">No projects yet. Create one below.</div>';
+      return;
+    }
+    grid.innerHTML = data.map(p => `
+      <div class="proj-card" onclick="openProject('${p.id}', ${JSON.stringify(esc(p.name))})">
+        <div class="proj-card-name">${esc(p.name)}</div>
+        <div class="proj-card-meta">Updated ${timeAgo(p.updated_at)}</div>
+      </div>`).join('');
+  } catch(e) {
+    grid.innerHTML = `<div class="proj-loading" style="color:#dc2626">Error loading projects: ${e.message}</div>`;
+  }
+}
+
+async function createProject() {
+  const input = document.getElementById('newProjInput');
+  const name = input.value.trim();
+  if (!name) { input.focus(); return; }
+  input.disabled = true;
+  const defaultSections = JSON.parse(JSON.stringify(SECTIONS));
+  const defaultPages = [{ id: 'p1', name: 'Page 1', data: emptyData() }];
+  const { data, error } = await sb.from('projects').insert({
+    name,
+    pages: defaultPages,
+    sections: defaultSections
+  }).select().single();
+  input.disabled = false;
+  if (error) { showToast('Error: ' + error.message); return; }
+  input.value = '';
+  openProject(data.id, name, data);
+}
+
+async function openProject(id, name, preloaded) {
+  currentProjectId = id;
+  document.getElementById('topbarProjectName').textContent = name;
+  setSaveState('saved');
+
+  let projectData = preloaded;
+  if (!projectData) {
+    const { data, error } = await sb.from('projects').select('pages,sections').eq('id', id).single();
+    if (error) { showToast('Error loading project'); return; }
+    projectData = data;
+  }
+
+  // Restore state
+  pages    = JSON.parse(JSON.stringify(projectData.pages    || [{ id:'p1', name:'Page 1', data:emptyData() }]));
+  SECTIONS = JSON.parse(JSON.stringify(projectData.sections || DEFAULT_SECTIONS));
+  cp = 0; cs = 0;
+
+  // Reset undo history for this project
+  history = []; histPtr = -1; snapshot();
+
+  document.getElementById('projectScreen').style.display = 'none';
+  document.getElementById('appShell').style.display = 'flex';
+  renderSidebar(); renderMain();
+}
+
+function backToProjects() {
+  document.getElementById('appShell').style.display = 'none';
+  document.getElementById('projectScreen').style.display = 'flex';
+  currentProjectId = null;
+  loadProjects();
+}
+
+// ── CLOUD SAVE ────────────────────────────────────────────────────────────────
+let saveTimer = null;
+
+function scheduleSave() {
+  clearTimeout(saveTimer);
+  setSaveState('saving');
+  saveTimer = setTimeout(saveToCloud, 1200);
+}
+
+async function saveToCloud() {
+  if (!currentProjectId) return;
+  const { error } = await sb.from('projects').update({
+    pages:      JSON.parse(JSON.stringify(pages)),
+    sections:   JSON.parse(JSON.stringify(SECTIONS)),
+    updated_at: new Date().toISOString()
+  }).eq('id', currentProjectId);
+  if (error) { setSaveState('error'); showToast('Save failed: ' + error.message); }
+  else setSaveState('saved');
+}
+
+function setSaveState(state) {
+  const ind = document.getElementById('saveIndicator');
+  const lbl = document.getElementById('saveLabel');
+  if (!ind) return;
+  ind.className = 'save-indicator ' + state;
+  lbl.textContent = state === 'saving' ? 'Saving…' : state === 'error' ? 'Save failed' : 'Saved';
+}
+
+// ── SECTIONS DEFAULT ─────────────────────────────────────────────────────────
+const DEFAULT_SECTIONS = [
+  { id:'hero',      name:'Hero Section',     fields:['Headline','Subtext'] },
+  { id:'challenge', name:'The Challenge',    fields:['Headline'], list:'Challenge Points' },
+  { id:'approach',  name:'Our Approach',     fields:['Headline'], list:'Steps' },
+  { id:'services',  name:'Service Offerings',fields:['Headline'], list:'Services' },
+  { id:'benefits',  name:'Benefits',         fields:['Headline'], list:'Benefits' },
+  { id:'whysisa',   name:'Why SISA',         fields:['Headline'], list:'Reasons' },
+  { id:'resources', name:'Related Resources',resList:true },
+];
+let SECTIONS = JSON.parse(JSON.stringify(DEFAULT_SECTIONS));
+
+function emptyData() {
+  const d = {};
+  SECTIONS.forEach(s => {
+    d[s.id] = { fields:{}, list:['','',''], notes:'' };
+    if (s.resList) d[s.id].list = [{title:'',url:''},{title:'',url:''},{title:'',url:''}];
+    (s.fields||[]).forEach(f => d[s.id].fields[f] = '');
+  });
+  return d;
+}
+
+let pages = [{ id:'p1', name:'Page 1', data:emptyData() }];
+let cp = 0, cs = 0;
+const pg  = () => pages[cp];
+const sec = () => SECTIONS[cs];
+const sd  = () => pg().data[sec().id];
+
+// ── UNDO HISTORY ─────────────────────────────────────────────────────────────
+let history = [], histPtr = -1;
+const MAX_HIST = 60;
+let snapTimer = null;
+
+function snapshot() {
+  history = history.slice(0, histPtr + 1);
+  history.push({ pages: JSON.parse(JSON.stringify(pages)), sections: JSON.parse(JSON.stringify(SECTIONS)), cp, cs });
+  if (history.length > MAX_HIST) history.shift();
+  histPtr = history.length - 1;
+}
+
+function dSnap() {
+  clearTimeout(snapTimer);
+  snapTimer = setTimeout(snapshot, 350);
+  scheduleSave();
+}
+
+function iSnap() {
+  clearTimeout(snapTimer);
+  snapshot();
+  scheduleSave();
+}
+
+function undo() {
+  if (histPtr <= 0) { showToast('Nothing to undo'); return; }
+  histPtr--;
+  const s = history[histPtr];
+  pages    = JSON.parse(JSON.stringify(s.pages));
+  SECTIONS = JSON.parse(JSON.stringify(s.sections));
+  cp = Math.min(s.cp, pages.length - 1);
+  cs = Math.min(s.cs, SECTIONS.length - 1);
+  renderSidebar(); renderMain();
+  showToast('Undone');
+  scheduleSave();
+}
+
+document.addEventListener('keydown', e => {
+  if ((e.metaKey || e.ctrlKey) && e.key === 'z' && !e.shiftKey) {
+    const el = document.activeElement;
+    if (el && (el.tagName === 'TEXTAREA' || el.tagName === 'INPUT')) return;
+    e.preventDefault(); undo();
+  }
+});
+
+// ── SIDEBAR ──────────────────────────────────────────────────────────────────
+function renderSidebar() {
+  cs = Math.min(cs, SECTIONS.length - 1);
+  document.getElementById('pageList').innerHTML = pages.map((p,i) =>
+    `<div class="page-item ${i===cp?'active':''}" onclick="switchPage(${i})">
+      <span class="dot"></span><span>${esc(p.name)}</span>
+    </div>`).join('');
+  document.getElementById('renameInput').value = pg().name;
+  document.getElementById('secNav').innerHTML = SECTIONS.map((s,i) =>
+    `<div class="nav-item ${i===cs?'active':''}" onclick="gotoSec(${i})">
+      <span class="nav-num">${i+1}</span>${esc(s.name)}
+    </div>`).join('');
+}
+
+function addPage() {
+  iSnap();
+  pages.push({ id:'p'+Date.now(), name:'Page '+(pages.length+1), data:emptyData() });
+  cp = pages.length-1; cs=0; iSnap(); renderSidebar(); renderMain();
+}
+function switchPage(i) { cp=i; cs=0; renderSidebar(); renderMain(); }
+function renamePage(v) { pg().name=v||'Untitled'; dSnap(); renderSidebar(); }
+function gotoSec(i) { cs=i; renderSidebar(); renderMain(); document.querySelector('.main').scrollTop=0; }
+
+// ── MAIN ─────────────────────────────────────────────────────────────────────
+function renderMain() {
+  const s=sec(), d=sd();
+  if (!d) {
+    pg().data[s.id] = { fields:{}, list:['','',''], notes:'' };
+    if (s.resList) pg().data[s.id].list = [{title:'',url:''},{title:'',url:''},{title:'',url:''}];
+    (s.fields||[]).forEach(f => pg().data[s.id].fields[f] = '');
+  }
+  const dd = sd();
+  let html=`<div class="sec-title">${esc(s.name)}</div>`;
+
+  (s.fields||[]).forEach(fname => {
+    const fid = 'f_'+s.id+'_'+fname.replace(/\s/g,'_');
+    html += `<div class="card">
+      <div class="field-label">${esc(fname)}</div>
+      <div class="fmt-toolbar">
+        <button class="fmt-btn" title="Bold (Cmd+B)" onclick="applyFmt('${fid}','bold')"><b>B</b></button>
+        <button class="fmt-btn" title="Italic (Cmd+I)" onclick="applyFmt('${fid}','italic')"><i>I</i></button>
+      </div>
+      <div id="${fid}" class="rich-editor" contenteditable="true" spellcheck="true"
+        data-secid="${s.id}" data-fname="${fname}" data-placeholder="Type here…"
+        oninput="pg().data['${s.id}'].fields['${fname}']=this.innerHTML;dSnap()"></div>
+    </div>`;
+  });
+
+  if (s.list) {
+    const ltid = `ltoolbar_${s.id}`;
+    html += `<div class="card">
+      <div class="field-label">${esc(s.list)}</div>
+      <div class="fmt-toolbar" id="${ltid}" style="margin-bottom:10px">
+        <button class="fmt-btn" id="${ltid}_bold"   title="Bold (Cmd+B)"  onclick="applyListFmt('bold')"  ><b>B</b></button>
+        <button class="fmt-btn" id="${ltid}_italic" title="Italic (Cmd+I)" onclick="applyListFmt('italic')" ><i>I</i></button>
+        <button class="fmt-btn fmt-btn-wide" id="${ltid}_bullet" title="Bullet" onclick="applyListFmt('insertUnorderedList')">• Bullet</button>
+      </div>
+      ${dd.list.map((v,i)=>{
+        const lid=`li_${s.id}_${i}`;
+        return `<div class="list-row" style="align-items:flex-start;margin-bottom:8px">
+          <div class="list-num" style="padding-top:9px">${i+1}</div>
+          <div id="${lid}" class="rich-editor" contenteditable="true" spellcheck="true"
+            data-secid="${s.id}" data-listidx="${i}" data-ltoolbar="${ltid}"
+            data-placeholder="Point ${i+1}…"
+            onfocus="setActiveListEditor(this)"
+            oninput="pg().data['${s.id}'].list[${i}]=this.innerHTML;dSnap()"
+            style="min-height:36px;flex:1"></div>
+          <button class="rm-btn" style="margin-top:4px" onclick="removeItem('${s.id}',${i})">✕</button>
+        </div>`;
+      }).join('')}
+      <div class="add-row" onclick="addItem('${s.id}')">+ Add point</div>
+    </div>`;
+  }
+
+  if (s.resList) {
+    html += `<div class="card">
+      <div class="field-label">Resources</div>
+      ${dd.list.map((r,i)=>`<div class="res-item">
+        <div class="res-head">
+          <span class="res-label">Resource ${i+1}</span>
+          <span class="res-rm" onclick="removeItem('${s.id}',${i})">Remove</span>
+        </div>
+        <div class="res-fields">
+          <div><div class="res-field-label">Title</div>
+            <input type="text" spellcheck="true" placeholder="Resource title…"
+              value="${esc(r.title)}" oninput="pg().data['${s.id}'].list[${i}].title=this.value;dSnap()"/>
+          </div>
+          <div><div class="res-field-label">URL</div>
+            <input type="text" placeholder="https://…"
+              value="${esc(r.url)}" oninput="pg().data['${s.id}'].list[${i}].url=this.value;dSnap()"/>
+          </div>
+        </div>
+      </div>`).join('')}
+      <div class="add-row" onclick="addItem('${s.id}')">+ Add resource</div>
+    </div>`;
+  }
+
+  const notesOpen = dd.notes ? 'open' : '';
+  html += `<div>
+    <div class="notes-toggle" onclick="this.nextElementSibling.classList.toggle('open')">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+      Notes for this section
+    </div>
+    <div class="notes-body ${notesOpen}">
+      <textarea spellcheck="true" placeholder="Internal notes, reminders or instructions for your client…"
+        oninput="pg().data['${s.id}'].notes=this.value;dSnap()">${esc(dd.notes||'')}</textarea>
+    </div>
+  </div>`;
+
+  html += `<div class="section-footer">
+    <button class="btn btn-outline" onclick="gotoSec(${cs-1})" ${cs===0?'disabled':''}>← Back</button>
+    <button class="btn btn-primary" onclick="gotoSec(${cs+1})" ${cs===SECTIONS.length-1?'disabled':''}>Next →</button>
+  </div>`;
+
+  document.getElementById('main').innerHTML = html;
+
+  document.querySelectorAll('.rich-editor').forEach(el => {
+    const secId = el.dataset.secid;
+    if (el.dataset.fname) {
+      el.innerHTML = pg().data[secId]?.fields?.[el.dataset.fname] || '';
+    } else if (el.dataset.listidx !== undefined) {
+      el.innerHTML = pg().data[secId]?.list?.[parseInt(el.dataset.listidx)] || '';
+    }
+  });
+}
+
+function addItem(secId) {
+  iSnap();
+  const s = SECTIONS.find(x=>x.id===secId);
+  pg().data[secId].list.push(s.resList ? {title:'',url:''} : '');
+  renderMain();
+}
+function removeItem(secId, i) {
+  iSnap();
+  pg().data[secId].list.splice(i, 1);
+  if (pg().data[secId].list.length === 0) {
+    const s = SECTIONS.find(x=>x.id===secId);
+    pg().data[secId].list.push(s.resList ? {title:'',url:''} : '');
+  }
+  renderMain();
+}
+
+// ── FORMATTING ────────────────────────────────────────────────────────────────
+let activeListEditor = null;
+function setActiveListEditor(el) { activeListEditor = el; }
+
+function applyFmt(fieldId, cmd) {
+  const el = document.getElementById(fieldId);
+  if (!el) return;
+  el.focus(); iSnap();
+  document.execCommand(cmd, false, null);
+  const secId = el.dataset.secid;
+  if (el.dataset.fname) pg().data[secId].fields[el.dataset.fname] = el.innerHTML;
+  else if (el.dataset.listidx !== undefined) pg().data[secId].list[parseInt(el.dataset.listidx)] = el.innerHTML;
+  updateToolbarState(el);
+}
+
+function applyListFmt(cmd) {
+  if (!activeListEditor) return;
+  activeListEditor.focus(); iSnap();
+  document.execCommand(cmd, false, null);
+  const secId = activeListEditor.dataset.secid;
+  if (activeListEditor.dataset.listidx !== undefined)
+    pg().data[secId].list[parseInt(activeListEditor.dataset.listidx)] = activeListEditor.innerHTML;
+  updateToolbarState(activeListEditor);
+}
+
+function updateToolbarState(editor) {
+  if (!editor) return;
+  const card = editor.closest('.card'); if (!card) return;
+  const toolbar = editor.dataset.ltoolbar
+    ? document.getElementById(editor.dataset.ltoolbar)
+    : card.querySelector('.fmt-toolbar');
+  if (!toolbar) return;
+  const isBold   = document.queryCommandState('bold');
+  const isItalic = document.queryCommandState('italic');
+  const isBullet = document.queryCommandState('insertUnorderedList');
+  toolbar.querySelectorAll('.fmt-btn').forEach(btn => {
+    const t = btn.title||'';
+    if (t.includes('Bold'))   btn.classList.toggle('active', isBold);
+    if (t.includes('Italic')) btn.classList.toggle('active', isItalic);
+    if (t.includes('Bullet')) btn.classList.toggle('active', isBullet);
+  });
+}
+
+document.addEventListener('selectionchange', () => {
+  const sel = window.getSelection();
+  if (!sel || sel.rangeCount === 0) return;
+  const node = sel.getRangeAt(0).commonAncestorContainer;
+  const editor = (node.nodeType===1 ? node : node.parentElement)?.closest?.('.rich-editor');
+  if (editor) { if (editor.dataset.ltoolbar) setActiveListEditor(editor); updateToolbarState(editor); }
+});
+
+// ── EDIT SECTIONS MODAL ──────────────────────────────────────────────────────
+let dragSrc = null;
+function openEditSections() { renderEditSections(); document.getElementById('editSecOverlay').classList.add('open'); }
+function closeEditSections() { document.getElementById('editSecOverlay').classList.remove('open'); renderSidebar(); renderMain(); }
+
+function renderEditSections() {
+  document.getElementById('editSecList').innerHTML = SECTIONS.map((s,i) => `
+    <div class="sec-row" id="secrow_${i}" draggable="true"
+      ondragstart="dragStart(event,${i})" ondragover="dragOver(event,${i})"
+      ondrop="dragDrop(event,${i})" ondragend="dragEnd()" ondragleave="dragLeave(event,${i})">
+      <span class="drag-handle" title="Drag to reorder">⠿</span>
+      <input class="sec-name-input" value="${esc(s.name)}" placeholder="Section name…" oninput="renameSec(${i},this.value)"/>
+      <div class="sec-row-actions">
+        <button class="icon-btn" title="Move up"   onclick="moveSec(${i},-1)" ${i===0?'disabled':''}>↑</button>
+        <button class="icon-btn" title="Move down" onclick="moveSec(${i},1)"  ${i===SECTIONS.length-1?'disabled':''}>↓</button>
+        <button class="icon-btn del" title="Delete" onclick="deleteSec(${i})" ${SECTIONS.length<=1?'disabled':''}>✕</button>
+      </div>
+    </div>`).join('');
+}
+
+function renameSec(i,val){ SECTIONS[i].name=val||'Untitled'; iSnap(); }
+function moveSec(i,dir){
+  const j=i+dir; if(j<0||j>=SECTIONS.length) return;
+  [SECTIONS[i],SECTIONS[j]]=[SECTIONS[j],SECTIONS[i]];
+  if(cs===i)cs=j; else if(cs===j)cs=i;
+  iSnap(); renderEditSections();
+}
+function deleteSec(i){
+  if(SECTIONS.length<=1) return;
+  iSnap(); SECTIONS.splice(i,1);
+  if(cs>=SECTIONS.length) cs=SECTIONS.length-1;
+  iSnap(); renderEditSections();
+}
+function addSection(){
+  iSnap();
+  const id='sec_'+Date.now();
+  SECTIONS.push({id,name:'New Section',fields:['Headline'],list:'Points'});
+  pages.forEach(p=>{ p.data[id]={fields:{Headline:''},list:['','',''],notes:''}; });
+  iSnap(); renderEditSections();
+  setTimeout(()=>{
+    const inputs=document.querySelectorAll('.sec-name-input');
+    const last=inputs[inputs.length-1]; if(last){last.focus();last.select();}
+  },50);
+}
+function dragStart(e,i){ dragSrc=i; e.dataTransfer.effectAllowed='move'; document.getElementById('secrow_'+i).classList.add('dragging'); }
+function dragOver(e,i){ e.preventDefault(); document.querySelectorAll('.sec-row').forEach(r=>r.classList.remove('drag-over')); if(i!==dragSrc) document.getElementById('secrow_'+i).classList.add('drag-over'); }
+function dragLeave(e,i){ document.getElementById('secrow_'+i).classList.remove('drag-over'); }
+function dragDrop(e,i){
+  e.preventDefault(); if(dragSrc===null||dragSrc===i) return;
+  const moved=SECTIONS.splice(dragSrc,1)[0]; SECTIONS.splice(i,0,moved);
+  if(cs===dragSrc)cs=i; else if(dragSrc<i&&cs>dragSrc&&cs<=i)cs--; else if(dragSrc>i&&cs<dragSrc&&cs>=i)cs++;
+  iSnap(); dragSrc=null; renderEditSections();
+}
+function dragEnd(){ dragSrc=null; document.querySelectorAll('.sec-row').forEach(r=>{r.classList.remove('dragging');r.classList.remove('drag-over');}); }
+document.getElementById('editSecOverlay').addEventListener('click',e=>{if(e.target===e.currentTarget)closeEditSections();});
+
+// ── EXPORT DROPDOWN ──────────────────────────────────────────────────────────
+function toggleExportMenu(e) {
+  e.stopPropagation();
+  const dd=document.getElementById('exportDropdown');
+  dd.classList.toggle('open',!dd.classList.contains('open'));
+  document.getElementById('curPageName').textContent=pg().name;
+}
+document.addEventListener('click',()=>document.getElementById('exportDropdown').classList.remove('open'));
+
+// ── DOCX EXPORT ──────────────────────────────────────────────────────────────
+function nodeToRuns(node,bold,italic){
+  const {TextRun}=docx; const runs=[];
+  node.childNodes.forEach(child=>{
+    if(child.nodeType===Node.TEXT_NODE){const t=child.textContent;if(t)runs.push(new TextRun({text:t,bold,italics:italic,font:'Arial',size:22}));}
+    else{const tag=child.tagName||'';const b=bold||tag==='B'||tag==='STRONG';const i=italic||tag==='I'||tag==='EM';runs.push(...nodeToRuns(child,b,i));}
+  });
+  return runs;
+}
+function htmlToRuns(html){
+  const {TextRun}=docx;
+  if(!html||!html.trim()) return [new TextRun({text:'—',font:'Arial',size:22})];
+  const dom=new DOMParser().parseFromString(html,'text/html');
+  const runs=nodeToRuns(dom.body,false,false);
+  return runs.length?runs:[new TextRun({text:'—',font:'Arial',size:22})];
+}
+function htmlToParas(html,bulletRef){
+  const {Paragraph,TextRun}=docx;
+  if(!html||!html.trim()) return [new Paragraph({children:[new TextRun({text:'—',font:'Arial',size:22})],spacing:{before:0,after:80}})];
+  const dom=new DOMParser().parseFromString(html,'text/html');
+  const paras=[];
+  function addPara(node,isBullet){
+    const runs=nodeToRuns(node,false,false); if(!runs.length) return;
+    paras.push(isBullet
+      ?new Paragraph({numbering:{reference:bulletRef,level:0},children:runs,spacing:{before:20,after:40}})
+      :new Paragraph({children:runs,spacing:{before:0,after:60}}));
+  }
+  dom.body.childNodes.forEach(node=>{
+    const tag=node.tagName||'';
+    if(tag==='UL'||tag==='OL'){node.querySelectorAll('li').forEach(li=>addPara(li,tag==='UL'));}
+    else if(tag==='P'||tag==='DIV'){
+      let hasBlock=false;
+      node.childNodes.forEach(child=>{const ct=child.tagName||'';if(ct==='UL'||ct==='OL'){hasBlock=true;child.querySelectorAll('li').forEach(li=>addPara(li,ct==='UL'));}});
+      if(!hasBlock) addPara(node,false);
+    } else if(node.nodeType===Node.TEXT_NODE){const t=node.textContent.trim();if(t)paras.push(new Paragraph({children:[new TextRun({text:t,font:'Arial',size:22})],spacing:{before:0,after:60}}));}
+    else addPara(node,false);
+  });
+  return paras.length?paras:[new Paragraph({children:[new TextRun({text:'—',font:'Arial',size:22})],spacing:{before:0,after:80}})];
+}
+function makeLabel(text){const {Paragraph,TextRun}=docx;return new Paragraph({children:[new TextRun({text:text.toUpperCase(),bold:true,size:18,color:'888888',font:'Arial'})],spacing:{before:220,after:60}});}
+function makeSectionHeading(name){const {Paragraph,TextRun,BorderStyle}=docx;return new Paragraph({children:[new TextRun({text:name,bold:true,size:26,font:'Arial',color:'1c1c1c'})],spacing:{before:400,after:160},border:{bottom:{style:BorderStyle.SINGLE,size:4,color:'e4e4e4',space:6}}});}
+function makePageHeading(name){const {Paragraph,TextRun}=docx;return new Paragraph({children:[new TextRun({text:name,bold:true,size:36,font:'Arial',color:'1c1c1c'})],spacing:{before:0,after:280}});}
+function buildPageChildren(page,pi){
+  const {Paragraph,TextRun,ExternalHyperlink}=docx;
+  const children=[]; children.push(makePageHeading(page.name)); const bulletRef='bullets_'+pi;
+  SECTIONS.forEach(s=>{
+    children.push(makeSectionHeading(s.name));
+    const d=page.data[s.id]||{fields:{},list:[],notes:''};
+    (s.fields||[]).forEach(fname=>{children.push(makeLabel(fname));htmlToParas(d.fields&&d.fields[fname],bulletRef).forEach(p=>children.push(p));});
+    if(s.list&&d.list){
+      children.push(makeLabel(s.list));
+      d.list.forEach(v=>children.push(new Paragraph({numbering:{reference:'nums_'+pi+'_'+s.id,level:0},children:htmlToRuns(v),spacing:{before:40,after:60}})));
+    }
+    if(s.resList&&d.list){
+      children.push(makeLabel('Resources'));
+      d.list.forEach((r,i)=>{
+        children.push(new Paragraph({children:[new TextRun({text:(i+1)+'. ',bold:true,font:'Arial',size:22}),new TextRun({text:r.title||'—',bold:true,font:'Arial',size:22})],spacing:{before:80,after:20}}));
+        if(r.url) children.push(new Paragraph({children:[new ExternalHyperlink({link:r.url,children:[new TextRun({text:r.url,style:'Hyperlink',font:'Arial',size:22})]})],spacing:{before:0,after:60}}));
+      });
+    }
+    if(d.notes) children.push(makeLabel('Notes'),new Paragraph({children:[new TextRun({text:d.notes,italics:true,color:'666666',font:'Arial',size:20})],spacing:{before:0,after:80}}));
+  });
+  return children;
+}
+function buildNumConfig(pageList){
+  const {LevelFormat,AlignmentType}=docx; const config=[];
+  pageList.forEach((_,pi)=>{
+    config.push({reference:'bullets_'+pi,levels:[{level:0,format:LevelFormat.BULLET,text:'•',alignment:AlignmentType.LEFT,style:{paragraph:{indent:{left:480,hanging:300}}}}]});
+    SECTIONS.filter(s=>s.list).forEach(s=>config.push({reference:'nums_'+pi+'_'+s.id,levels:[{level:0,format:LevelFormat.DECIMAL,text:'%1.',alignment:AlignmentType.LEFT,style:{paragraph:{indent:{left:560,hanging:360}}}}]}));
+  });
+  return config;
+}
+const PAGE_PROPS={page:{size:{width:11906,height:16838},margin:{top:1440,right:1440,bottom:1440,left:1440}}};
+const DOC_STYLES={default:{document:{run:{font:'Arial',size:22}}},characterStyles:[{id:'Hyperlink',name:'Hyperlink',basedOn:'DefaultParagraphFont',run:{color:'2563eb',underline:{type:'single'}}}]};
+async function downloadDocx(mode){
+  document.getElementById('exportDropdown').classList.remove('open');
+  const {Document,Packer}=docx; let doc,filename;
+  if(mode==='current'){
+    const page=pg(); filename=(page.name||'content').toLowerCase().replace(/\s+/g,'-');
+    doc=new Document({numbering:{config:buildNumConfig([page])},styles:DOC_STYLES,sections:[{properties:PAGE_PROPS,children:buildPageChildren(page,0)}]});
+  } else {
+    filename='all-pages';
+    doc=new Document({numbering:{config:buildNumConfig(pages)},styles:DOC_STYLES,sections:pages.map((page,pi)=>({properties:PAGE_PROPS,children:buildPageChildren(page,pi)}))});
+  }
+  const blob=await Packer.toBlob(doc);
+  const url=URL.createObjectURL(blob); const a=document.createElement('a');
+  a.href=url; a.download=filename+'.docx'; a.click(); URL.revokeObjectURL(url);
+  showToast('Downloading '+a.download);
+}
+
+// ── UTILS ─────────────────────────────────────────────────────────────────────
+function showToast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200);}
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function timeAgo(iso){
+  const diff=Date.now()-new Date(iso); const m=Math.floor(diff/60000);
+  if(m<1)return'just now'; if(m<60)return m+'m ago';
+  const h=Math.floor(m/60); if(h<24)return h+'h ago';
+  return Math.floor(h/24)+'d ago';
+}
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+loadProjects();
+</script>
+
+// ── UNDO HISTORY ─────────────────────────────────────────────────────────────
+let history = [], histPtr = -1;
+const MAX_HIST = 60;
+let snapTimer = null;
+
+function snapshot() {
+  // Drop any future states if we undid and then made a change
+  history = history.slice(0, histPtr + 1);
+  history.push({
+    pages:    JSON.parse(JSON.stringify(pages)),
+    sections: JSON.parse(JSON.stringify(SECTIONS)),
+    cp, cs
+  });
+  if (history.length > MAX_HIST) history.shift();
+  histPtr = history.length - 1;
+}
+
+// For text input: debounce so rapid typing is one undo step
+function dSnap() {
+  clearTimeout(snapTimer);
+  snapTimer = setTimeout(snapshot, 350);
+}
+
+// For structural changes (add/remove/format): snapshot immediately
+function iSnap() {
+  clearTimeout(snapTimer);
+  snapshot();
+}
+
+function undo() {
+  if (histPtr <= 0) { showToast('Nothing to undo'); return; }
+  histPtr--;
+  const s = history[histPtr];
+  pages    = JSON.parse(JSON.stringify(s.pages));
+  SECTIONS = JSON.parse(JSON.stringify(s.sections));
+  cp = Math.min(s.cp, pages.length - 1);
+  cs = Math.min(s.cs, SECTIONS.length - 1);
+  renderSidebar(); renderMain();
+  showToast('Undone');
+}
+
+document.addEventListener('keydown', e => {
+  if ((e.metaKey || e.ctrlKey) && e.key === 'z' && !e.shiftKey) {
+    // Only intercept if focus is NOT in a text field (let browser handle in-field undo first,
+    // but also handle the "already at start of field" case by checking textarea selection)
+    const el = document.activeElement;
+    const inField = el && (el.tagName === 'TEXTAREA' || el.tagName === 'INPUT');
+    if (!inField) { e.preventDefault(); undo(); }
+    // For fields: browser handles within-field undo naturally via its own stack.
+    // We snapshot on changes, so Cmd+Z in empty/unchanged field will bubble to our undo.
+  }
+});
+
+// Global Cmd+Z even when in a textarea — after browser exhausts its own undo
+// We listen on textarea blur to flush any pending debounced snapshot
+document.addEventListener('focusin', e => {
+  if (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT') {
+    e.target.addEventListener('keydown', function fieldUndo(ke) {
+      if ((ke.metaKey || ke.ctrlKey) && ke.key === 'z' && !ke.shiftKey) {
+        // Let browser do its thing first; if field is already at initial state, do app undo
+        setTimeout(() => {
+          // If field content equals what's in our state, browser had nothing to undo → we undo
+          // (this is a heuristic; it works for the common case)
+        }, 0);
+      }
+    }, { once: true });
+  }
+});
+
+// ── SIDEBAR ──────────────────────────────────────────────────────────────────
+function renderSidebar() {
+  cs = Math.min(cs, SECTIONS.length - 1);
+  document.getElementById('pageList').innerHTML = pages.map((p,i) =>
+    `<div class="page-item ${i===cp?'active':''}" onclick="switchPage(${i})">
+      <span class="dot"></span><span>${esc(p.name)}</span>
+    </div>`).join('');
+  document.getElementById('renameInput').value = pg().name;
+  document.getElementById('secNav').innerHTML = SECTIONS.map((s,i) =>
+    `<div class="nav-item ${i===cs?'active':''}" onclick="gotoSec(${i})">
+      <span class="nav-num">${i+1}</span>${esc(s.name)}
+    </div>`).join('');
+}
+
+function addPage() {
+  iSnap();
+  pages.push({ id:'p'+Date.now(), name:'Page '+(pages.length+1), data:emptyData() });
+  cp = pages.length-1; cs=0; iSnap(); renderSidebar(); renderMain();
+}
+function switchPage(i) { cp=i; cs=0; renderSidebar(); renderMain(); }
+function renamePage(v) { pg().name=v||'Untitled'; dSnap(); renderSidebar(); }
+function gotoSec(i) { cs=i; renderSidebar(); renderMain(); document.querySelector('.main').scrollTop=0; }
+
+// ── MAIN ─────────────────────────────────────────────────────────────────────
+function renderMain() {
+  const s=sec(), d=sd();
+  // Ensure data exists for this section (in case sections were added after page was created)
+  if (!d) { pg().data[s.id] = { fields:{}, list:['','',''], notes:'' };
+    if (s.resList) pg().data[s.id].list = [{title:'',url:''},{title:'',url:''},{title:'',url:''}];
+    (s.fields||[]).forEach(f => pg().data[s.id].fields[f] = '');
+  }
+  const dd = sd();
+  let html=`<div class="sec-title">${esc(s.name)}</div>`;
+
+  (s.fields||[]).forEach(fname => {
+    const val = dd.fields[fname]||'';
+    const fid = 'f_'+s.id+'_'+fname.replace(/\s/g,'_');
+    html += `<div class="card">
+      <div class="field-label">${esc(fname)}</div>
+      <div class="fmt-toolbar">
+        <button class="fmt-btn" title="Bold (Cmd+B)" onclick="applyFmt('${fid}','bold')"><b>B</b></button>
+        <button class="fmt-btn" title="Italic (Cmd+I)" onclick="applyFmt('${fid}','italic')"><i>I</i></button>
+      </div>
+      <div id="${fid}"
+        class="rich-editor"
+        contenteditable="true"
+        spellcheck="true"
+        data-secid="${s.id}"
+        data-fname="${fname}"
+        data-placeholder="Type here…"
+        oninput="pg().data['${s.id}'].fields['${fname}']=this.innerHTML;dSnap()"></div>
+    </div>`;
+  });
+
+  if (s.list) {
+    const ltid = `ltoolbar_${s.id}`;
+    html += `<div class="card">
+      <div class="field-label">${esc(s.list)}</div>
+      <div class="fmt-toolbar" id="${ltid}" style="margin-bottom:10px">
+        <button class="fmt-btn" id="${ltid}_bold"  title="Bold (Cmd+B)"  onclick="applyListFmt('bold')"  ><b>B</b></button>
+        <button class="fmt-btn" id="${ltid}_italic" title="Italic (Cmd+I)" onclick="applyListFmt('italic')" ><i>I</i></button>
+        <button class="fmt-btn fmt-btn-wide" id="${ltid}_bullet" title="Bullet" onclick="applyListFmt('insertUnorderedList')">• Bullet</button>
+      </div>
+      ${dd.list.map((v,i)=>{
+        const lid=`li_${s.id}_${i}`;
+        return `<div class="list-row" style="align-items:flex-start;margin-bottom:8px">
+          <div class="list-num" style="padding-top:9px">${i+1}</div>
+          <div id="${lid}"
+            class="rich-editor"
+            contenteditable="true"
+            spellcheck="true"
+            data-secid="${s.id}"
+            data-listidx="${i}"
+            data-ltoolbar="${ltid}"
+            data-placeholder="Point ${i+1}…"
+            onfocus="setActiveListEditor(this)"
+            oninput="pg().data['${s.id}'].list[${i}]=this.innerHTML;dSnap()"
+            style="min-height:36px;flex:1"></div>
+          <button class="rm-btn" style="margin-top:4px" onclick="removeItem('${s.id}',${i})">✕</button>
+        </div>`;
+      }).join('')}
+      <div class="add-row" onclick="addItem('${s.id}')">+ Add point</div>
+    </div>`;
+  }
+
+  if (s.resList) {
+    html += `<div class="card">
+      <div class="field-label">Resources</div>
+      ${dd.list.map((r,i)=>`<div class="res-item">
+        <div class="res-head">
+          <span class="res-label">Resource ${i+1}</span>
+          <span class="res-rm" onclick="removeItem('${s.id}',${i})">Remove</span>
+        </div>
+        <div class="res-fields">
+          <div><div class="res-field-label">Title</div>
+            <input type="text" spellcheck="true" placeholder="Resource title…"
+              value="${esc(r.title)}"
+              oninput="pg().data['${s.id}'].list[${i}].title=this.value;dSnap()"/>
+          </div>
+          <div><div class="res-field-label">URL</div>
+            <input type="text" placeholder="https://…"
+              value="${esc(r.url)}"
+              oninput="pg().data['${s.id}'].list[${i}].url=this.value;dSnap()"/>
+          </div>
+        </div>
+      </div>`).join('')}
+      <div class="add-row" onclick="addItem('${s.id}')">+ Add resource</div>
+    </div>`;
+  }
+
+  const notesOpen = dd.notes ? 'open' : '';
+  html += `<div>
+    <div class="notes-toggle" onclick="this.nextElementSibling.classList.toggle('open')">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+      Notes for this section
+    </div>
+    <div class="notes-body ${notesOpen}">
+      <textarea spellcheck="true" placeholder="Internal notes, reminders or instructions for your client…"
+        oninput="pg().data['${s.id}'].notes=this.value;dSnap()">${esc(dd.notes||'')}</textarea>
+    </div>
+  </div>`;
+
+  html += `<div class="section-footer">
+    <button class="btn btn-outline" onclick="gotoSec(${cs-1})" ${cs===0?'disabled':''}>← Back</button>
+    <button class="btn btn-primary" onclick="gotoSec(${cs+1})" ${cs===SECTIONS.length-1?'disabled':''}>Next →</button>
+  </div>`;
+
+  document.getElementById('main').innerHTML = html;
+
+  // Populate contenteditable fields after DOM insertion
+  document.querySelectorAll('.rich-editor').forEach(el => {
+    const secId = el.dataset.secid;
+    if (el.dataset.fname) {
+      el.innerHTML = pg().data[secId]?.fields?.[el.dataset.fname] || '';
+    } else if (el.dataset.listidx !== undefined) {
+      const idx = parseInt(el.dataset.listidx);
+      el.innerHTML = pg().data[secId]?.list?.[idx] || '';
+    }
+  });
+}
+
+function addItem(secId) {
+  iSnap();
+  const s = SECTIONS.find(x=>x.id===secId);
+  pg().data[secId].list.push(s.resList ? {title:'',url:''} : '');
+  renderMain();
+}
+function removeItem(secId, i) {
+  iSnap();
+  pg().data[secId].list.splice(i, 1);
+  if (pg().data[secId].list.length === 0) {
+    const s = SECTIONS.find(x=>x.id===secId);
+    pg().data[secId].list.push(s.resList ? {title:'',url:''} : '');
+  }
+  renderMain();
+}
+
+// Track which list item editor is currently focused
+let activeListEditor = null;
+
+function setActiveListEditor(el) {
+  activeListEditor = el;
+}
+
+// Apply formatting to a specific field editor (text fields)
+function applyFmt(fieldId, cmd) {
+  const el = document.getElementById(fieldId);
+  if (!el) return;
+  el.focus();
+  iSnap();
+  document.execCommand(cmd, false, null);
+  const secId = el.dataset.secid;
+  if (el.dataset.fname) {
+    pg().data[secId].fields[el.dataset.fname] = el.innerHTML;
+  } else if (el.dataset.listidx !== undefined) {
+    pg().data[secId].list[parseInt(el.dataset.listidx)] = el.innerHTML;
+  }
+  updateToolbarState(el);
+}
+
+// Apply formatting to the currently focused list item editor
+function applyListFmt(cmd) {
+  if (!activeListEditor) return;
+  activeListEditor.focus();
+  iSnap();
+  document.execCommand(cmd, false, null);
+  const secId = activeListEditor.dataset.secid;
+  if (activeListEditor.dataset.listidx !== undefined) {
+    pg().data[secId].list[parseInt(activeListEditor.dataset.listidx)] = activeListEditor.innerHTML;
+  }
+  updateToolbarState(activeListEditor);
+}
+
+// Update active state of toolbar buttons based on cursor position
+function updateToolbarState(editor) {
+  if (!editor) return;
+  // Find the toolbar associated with this editor
+  let toolbarId;
+  if (editor.dataset.ltoolbar) {
+    toolbarId = editor.dataset.ltoolbar;
+  } else if (editor.dataset.fname) {
+    toolbarId = 'toolbar_' + editor.id;
+  }
+  // For field editors the toolbar is the previous sibling's parent — use closest approach
+  const card = editor.closest('.card');
+  if (!card) return;
+  const toolbar = editor.dataset.ltoolbar
+    ? document.getElementById(editor.dataset.ltoolbar)
+    : card.querySelector('.fmt-toolbar');
+  if (!toolbar) return;
+
+  const isBold   = document.queryCommandState('bold');
+  const isItalic = document.queryCommandState('italic');
+  const isBullet = document.queryCommandState('insertUnorderedList');
+
+  const bBtn = toolbar.querySelector('[id$="_bold"],  button:nth-child(1)');
+  const iBtn = toolbar.querySelector('[id$="_italic"], button:nth-child(2)');
+  const ulBtn = toolbar.querySelector('[id$="_bullet"]');
+
+  // Use querySelectorAll so we don't rely on fragile nth-child
+  const btns = toolbar.querySelectorAll('.fmt-btn');
+  btns.forEach(btn => {
+    const id = btn.id || '';
+    if (id.endsWith('_bold')   || btn.title.includes('Bold'))   btn.classList.toggle('active', isBold);
+    if (id.endsWith('_italic') || btn.title.includes('Italic')) btn.classList.toggle('active', isItalic);
+    if (id.endsWith('_bullet') || btn.title.includes('Bullet')) btn.classList.toggle('active', isBullet);
+  });
+}
+
+// Listen for selection changes to update toolbar state in real time
+document.addEventListener('selectionchange', () => {
+  const sel = window.getSelection();
+  if (!sel || sel.rangeCount === 0) return;
+  const node = sel.getRangeAt(0).commonAncestorContainer;
+  const editor = node.nodeType === 1
+    ? node.closest?.('.rich-editor')
+    : node.parentElement?.closest?.('.rich-editor');
+  if (editor) {
+    if (editor.dataset.ltoolbar) setActiveListEditor(editor);
+    updateToolbarState(editor);
+  }
+});
+
+// ── EDIT SECTIONS MODAL ──────────────────────────────────────────────────────
+let dragSrc = null;
+
+function openEditSections() {
+  renderEditSections();
+  document.getElementById('editSecOverlay').classList.add('open');
+}
+function closeEditSections() {
+  document.getElementById('editSecOverlay').classList.remove('open');
+  renderSidebar(); renderMain();
+}
+
+function renderEditSections() {
+  const list = document.getElementById('editSecList');
+  list.innerHTML = SECTIONS.map((s, i) => `
+    <div class="sec-row" id="secrow_${i}"
+      draggable="true"
+      ondragstart="dragStart(event,${i})"
+      ondragover="dragOver(event,${i})"
+      ondrop="dragDrop(event,${i})"
+      ondragend="dragEnd()"
+      ondragleave="dragLeave(event,${i})">
+      <span class="drag-handle" title="Drag to reorder">⠿</span>
+      <input class="sec-name-input" value="${esc(s.name)}"
+        placeholder="Section name…"
+        oninput="renameSec(${i},this.value)"/>
+      <div class="sec-row-actions">
+        <button class="icon-btn" title="Move up" onclick="moveSec(${i},-1)" ${i===0?'disabled':''}>↑</button>
+        <button class="icon-btn" title="Move down" onclick="moveSec(${i},1)" ${i===SECTIONS.length-1?'disabled':''}>↓</button>
+        <button class="icon-btn del" title="Delete section" onclick="deleteSec(${i})" ${SECTIONS.length<=1?'disabled':''}>✕</button>
+      </div>
+    </div>`).join('');
+}
+
+function renameSec(i, val) {
+  SECTIONS[i].name = val || 'Untitled';
+  iSnap();
+}
+
+function moveSec(i, dir) {
+  const j = i + dir;
+  if (j < 0 || j >= SECTIONS.length) return;
+  [SECTIONS[i], SECTIONS[j]] = [SECTIONS[j], SECTIONS[i]];
+  if (cs === i) cs = j; else if (cs === j) cs = i;
+  iSnap();
+  renderEditSections();
+}
+
+function deleteSec(i) {
+  if (SECTIONS.length <= 1) return;
+  iSnap();
+  SECTIONS.splice(i, 1);
+  if (cs >= SECTIONS.length) cs = SECTIONS.length - 1;
+  iSnap();
+  renderEditSections();
+}
+
+function addSection() {
+  iSnap();
+  const id = 'sec_' + Date.now();
+  SECTIONS.push({ id, name: 'New Section', fields: ['Headline'], list: 'Points' });
+  // Init data for this section in all pages
+  pages.forEach(p => {
+    p.data[id] = { fields: { Headline: '' }, list: ['', '', ''], notes: '' };
+  });
+  iSnap();
+  renderEditSections();
+  // Focus the new name input
+  setTimeout(() => {
+    const inputs = document.querySelectorAll('.sec-name-input');
+    const last = inputs[inputs.length - 1];
+    if (last) { last.focus(); last.select(); }
+  }, 50);
+}
+
+// Drag and drop for section reordering
+function dragStart(e, i) {
+  dragSrc = i;
+  e.dataTransfer.effectAllowed = 'move';
+  document.getElementById('secrow_' + i).classList.add('dragging');
+}
+function dragOver(e, i) {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  document.querySelectorAll('.sec-row').forEach(r => r.classList.remove('drag-over'));
+  if (i !== dragSrc) document.getElementById('secrow_' + i).classList.add('drag-over');
+}
+function dragLeave(e, i) {
+  document.getElementById('secrow_' + i).classList.remove('drag-over');
+}
+function dragDrop(e, i) {
+  e.preventDefault();
+  if (dragSrc === null || dragSrc === i) return;
+  const moved = SECTIONS.splice(dragSrc, 1)[0];
+  SECTIONS.splice(i, 0, moved);
+  if (cs === dragSrc) cs = i;
+  else if (dragSrc < i && cs > dragSrc && cs <= i) cs--;
+  else if (dragSrc > i && cs < dragSrc && cs >= i) cs++;
+  iSnap();
+  dragSrc = null;
+  renderEditSections();
+}
+function dragEnd() {
+  dragSrc = null;
+  document.querySelectorAll('.sec-row').forEach(r => {
+    r.classList.remove('dragging'); r.classList.remove('drag-over');
+  });
+}
+
+document.getElementById('editSecOverlay').addEventListener('click', e => {
+  if (e.target === e.currentTarget) closeEditSections();
+});
+
+// ── EXPORT DROPDOWN ──────────────────────────────────────────────────────────
+function toggleExportMenu(e) {
+  e.stopPropagation();
+  const dd = document.getElementById('exportDropdown');
+  dd.classList.toggle('open', !dd.classList.contains('open'));
+  document.getElementById('curPageName').textContent = pg().name;
+}
+document.addEventListener('click', () => {
+  document.getElementById('exportDropdown').classList.remove('open');
+});
+
+// ── DOCX EXPORT ──────────────────────────────────────────────────────────────
+// Walk a DOM node and collect TextRuns (handles bold/italic nesting)
+function nodeToRuns(node, bold, italic) {
+  const {TextRun} = docx;
+  const runs = [];
+  node.childNodes.forEach(child => {
+    if (child.nodeType === Node.TEXT_NODE) {
+      const t = child.textContent;
+      if (t) runs.push(new TextRun({text:t, bold, italics:italic, font:'Arial', size:22}));
+    } else {
+      const tag = child.tagName||'';
+      const b = bold  || tag==='B' || tag==='STRONG';
+      const i = italic|| tag==='I' || tag==='EM';
+      runs.push(...nodeToRuns(child, b, i));
+    }
+  });
+  return runs;
+}
+
+// Flatten HTML to a single array of TextRuns (for numbered list items)
+function htmlToRuns(html) {
+  const {TextRun} = docx;
+  if (!html || !html.trim()) return [new TextRun({text:'—', font:'Arial', size:22})];
+  const parser = new DOMParser();
+  const dom = parser.parseFromString(html, 'text/html');
+  const runs = nodeToRuns(dom.body, false, false);
+  return runs.length ? runs : [new TextRun({text:'—', font:'Arial', size:22})];
+}
+
+// Convert stored HTML string to an array of docx Paragraphs
+function htmlToParas(html, bulletRef) {
+  const {Paragraph, TextRun} = docx;
+  if (!html || !html.trim()) return [new Paragraph({children:[new TextRun({text:'—',font:'Arial',size:22})],spacing:{before:0,after:80}})];
+  const parser = new DOMParser();
+  const dom = parser.parseFromString(html, 'text/html');
+  const paras = [];
+
+  function addPara(node, isBullet) {
+    const runs = nodeToRuns(node, false, false);
+    if (!runs.length) return;
+    if (isBullet) paras.push(new Paragraph({numbering:{reference:bulletRef,level:0},children:runs,spacing:{before:20,after:40}}));
+    else paras.push(new Paragraph({children:runs,spacing:{before:0,after:60}}));
+  }
+
+  dom.body.childNodes.forEach(node => {
+    const tag = node.tagName||'';
+    if (tag==='UL'||tag==='OL') {
+      node.querySelectorAll('li').forEach(li => addPara(li, tag==='UL'));
+    } else if (tag==='P'||tag==='DIV') {
+      // could contain a nested UL
+      let hasBlock = false;
+      node.childNodes.forEach(child => {
+        const ct = child.tagName||'';
+        if (ct==='UL'||ct==='OL') { hasBlock=true; child.querySelectorAll('li').forEach(li=>addPara(li,ct==='UL')); }
+      });
+      if (!hasBlock) addPara(node, false);
+    } else if (node.nodeType===Node.TEXT_NODE) {
+      const t = node.textContent.trim();
+      if (t) paras.push(new Paragraph({children:[new TextRun({text:t,font:'Arial',size:22})],spacing:{before:0,after:60}}));
+    } else {
+      addPara(node, false);
+    }
+  });
+  return paras.length ? paras : [new Paragraph({children:[new TextRun({text:'—',font:'Arial',size:22})],spacing:{before:0,after:80}})];
+}
+
+function makeLabel(text) {
+  const {Paragraph,TextRun}=docx;
+  return new Paragraph({children:[new TextRun({text:text.toUpperCase(),bold:true,size:18,color:'888888',font:'Arial'})],spacing:{before:220,after:60}});
+}
+function makeSectionHeading(name) {
+  const {Paragraph,TextRun,BorderStyle}=docx;
+  return new Paragraph({children:[new TextRun({text:name,bold:true,size:26,font:'Arial',color:'1c1c1c'})],spacing:{before:400,after:160},border:{bottom:{style:BorderStyle.SINGLE,size:4,color:'e4e4e4',space:6}}});
+}
+function makePageHeading(name) {
+  const {Paragraph,TextRun}=docx;
+  return new Paragraph({children:[new TextRun({text:name,bold:true,size:36,font:'Arial',color:'1c1c1c'})],spacing:{before:0,after:280}});
+}
+
+function buildPageChildren(page, pi) {
+  const {Paragraph,TextRun,ExternalHyperlink}=docx;
+  const children=[];
+  children.push(makePageHeading(page.name));
+  const bulletRef='bullets_'+pi;
+  SECTIONS.forEach(s=>{
+    children.push(makeSectionHeading(s.name));
+    const d=page.data[s.id]||{fields:{},list:[],notes:''};
+    (s.fields||[]).forEach(fname=>{
+      children.push(makeLabel(fname));
+      htmlToParas(d.fields&&d.fields[fname], bulletRef).forEach(p=>children.push(p));
+    });
+    if(s.list&&d.list){
+      children.push(makeLabel(s.list));
+      d.list.forEach(v=>{
+        const runs = htmlToRuns(v);
+        children.push(new Paragraph({numbering:{reference:'nums_'+pi+'_'+s.id,level:0},children:runs,spacing:{before:40,after:60}}));
+      });
+    }
+    if(s.resList&&d.list){
+      children.push(makeLabel('Resources'));
+      d.list.forEach((r,i)=>{
+        children.push(new Paragraph({children:[new TextRun({text:(i+1)+'. ',bold:true,font:'Arial',size:22}),new TextRun({text:r.title||'—',bold:true,font:'Arial',size:22})],spacing:{before:80,after:20}}));
+        if(r.url) children.push(new Paragraph({children:[new ExternalHyperlink({link:r.url,children:[new TextRun({text:r.url,style:'Hyperlink',font:'Arial',size:22})]})],spacing:{before:0,after:60}}));
+      });
+    }
+    if(d.notes) children.push(makeLabel('Notes'),new Paragraph({children:[new TextRun({text:d.notes,italics:true,color:'666666',font:'Arial',size:20})],spacing:{before:0,after:80}}));
+  });
+  return children;
+}
+
+function buildNumConfig(pageList) {
+  const {LevelFormat,AlignmentType}=docx;
+  const config=[];
+  pageList.forEach((_,pi)=>{
+    config.push({reference:'bullets_'+pi,levels:[{level:0,format:LevelFormat.BULLET,text:'•',alignment:AlignmentType.LEFT,style:{paragraph:{indent:{left:480,hanging:300}}}}]});
+    SECTIONS.filter(s=>s.list).forEach(s=>config.push({reference:'nums_'+pi+'_'+s.id,levels:[{level:0,format:LevelFormat.DECIMAL,text:'%1.',alignment:AlignmentType.LEFT,style:{paragraph:{indent:{left:560,hanging:360}}}}]}));
+  });
+  return config;
+}
+
+const PAGE_PROPS={page:{size:{width:11906,height:16838},margin:{top:1440,right:1440,bottom:1440,left:1440}}};
+const DOC_STYLES={default:{document:{run:{font:'Arial',size:22}}},characterStyles:[{id:'Hyperlink',name:'Hyperlink',basedOn:'DefaultParagraphFont',run:{color:'2563eb',underline:{type:'single'}}}]};
+
+async function downloadDocx(mode) {
+  document.getElementById('exportDropdown').classList.remove('open');
+  const {Document,Packer}=docx;
+  let doc,filename;
+  if(mode==='current'){
+    const page=pg();
+    filename=(page.name||'content').toLowerCase().replace(/\s+/g,'-');
+    doc=new Document({numbering:{config:buildNumConfig([page])},styles:DOC_STYLES,sections:[{properties:PAGE_PROPS,children:buildPageChildren(page,0)}]});
+  } else {
+    filename='all-pages';
+    doc=new Document({numbering:{config:buildNumConfig(pages)},styles:DOC_STYLES,sections:pages.map((page,pi)=>({properties:PAGE_PROPS,children:buildPageChildren(page,pi)}))});
+  }
+  const blob=await Packer.toBlob(doc);
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url; a.download=filename+'.docx'; a.click();
+  URL.revokeObjectURL(url);
+  showToast('Downloading '+a.download);
+}
+
+function showToast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200);}
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+loadProjects();
+</script>
+</body>
+</html>
